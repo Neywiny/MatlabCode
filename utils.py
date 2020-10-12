@@ -163,7 +163,6 @@ def lfsr(c, k, n):
     The initial values of the bits are given by the vector k"""
 
     y = [0 for _ in range(n)]
-    c = np.array([c])
 
     kln = len(k)
     for j in range(n):
@@ -171,18 +170,21 @@ def lfsr(c, k, n):
             y[j] = k[j]
         else:
             reg = y[j-kln:j]
-            y[j] = np.mod(np.matmul(reg, c.T), 2)[0]
+            y[j] = np.mod(np.dot(reg, c), 2)
     return y
 
 def lfsrlength(v,n):
     """This function tests the vector v of bits to see if it is generated
     by a linear feedback recurrence of length at most n"""
 
-    print('Order\tDeterminant')
+    res = dict()
     for j in range(1, n+1):
        M = circmat(v,j)
-       Mdet = int(np.mod(np.linalg.det(np.array(M)),2))
-       print(j, Mdet, sep='\t')
+       Mdet = int(np.round(np.linalg.det(np.array(M)))) % 2
+       res[j] = Mdet
+       if j == 38:
+           det = np.linalg.det(np.array(M))
+    return res
 
 def lfsrsolve(v,n):
     """Given a guess n for the length of the recurrence that generates
@@ -207,9 +209,8 @@ def lfsrsolve(v,n):
     # mod operation. As long as this routine is not used on huge examples, it should
     # be ok
 
-    y = np.mod(np.matmul(Minv, x), 2);
-    y = y[:].T# Convert the output to a row vector
-    return y
+    y = np.mod(np.matmul(Minv, x), 2)
+    return list(y[:,0])
 
 ##def multell(p,M,a,b,n):
 ##% This function prints the Mth multiple of p on the elliptic
@@ -286,3 +287,7 @@ If a is a matrix, it calculates a(j,k)^z mod for every element in a"""
     for x in a:
         ret.append(_powermod_single(x, z, n))
     return(ret)
+
+
+if __name__ == "__main__":
+    pass
