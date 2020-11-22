@@ -117,7 +117,12 @@ def int2text1(x):
       a  <-- 0
       b  <-- 1
       and so on..."""
-    return int2text(x - 1) if x > 0 else ' '
+    s = ''
+    i = 0
+    while x:
+        s += int2text((x % 100) - 1)
+        x //= 100
+    return s[::-1]
 
 # still not super sure what this one does
 def interppoly(x, f, m):
