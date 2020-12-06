@@ -1,6 +1,92 @@
 import numpy as np
 from sympy.ntheory.factor_ import totient as eulerphi
 
+Inf = inf = float('inf')
+
+def add_simple(p1, p2, a, b):
+    if p1[0] == Inf and p1[1] == Inf:
+       return p2
+
+    if p2[0] == Inf and p2[1] == Inf: 
+       return p1
+    
+    x1 = p1[0]
+    x2 = p2[0]
+    y1 = p1[1]
+    y2 = p2[1]
+    z1 = 1  # this will store the gcd incase the addition produced a factor of n
+
+    if (x1 == x2) and ((y1 == y2 == 0) or (y1 != y2)):  # infinity cases
+        return (inf, inf)
+
+    if p1 == p2:
+        den = 1/(2 * y1)
+        num = x1 * x1
+        num = 3 * num + a
+    else:   # case p1 ~= p2
+        temp = x2 - x1
+        den = 1/temp
+        num = y2 - y1
+        
+    m = num * den
+    temp = m * m
+    x3 = temp - x1 - x2
+    temp = x1 - x3
+    y3 = m * temp
+    y3 = y3 - y1
+    return (x3, y3)
+def addell(p1, p2, a, b, n):
+    '''This function add points on the elliptic curve
+    y^2 = x^3 + ax + b mod n
+    The points are represented by
+    p1(1) = x1    p1(2) = y1
+    p2(1) = x2    p2(2) = y2'''
+    if p1[0] == Inf and p1[1] == Inf:
+       return p2
+
+    if p2[0] == Inf and p2[1] == Inf: 
+       return p1
+    
+    x1 = p1[0]
+    x2 = p2[0]
+    y1 = p1[1]
+    y2 = p2[1]
+    z1 = 1  # this will store the gcd incase the addition produced a factor of n
+
+    if (x1 == x2) and ((y1 == y2 == 0) or (y1 != y2)):  # infinity cases
+        return (inf, inf)
+
+    if p1 == p2 and np.gcd(y1, n) != 1 and np.gcd(y1, n) != n:
+       z1 = np.gcd(y1, n)
+       print('Elliptic Curve addition produced a factor of n, factor = ', z1)
+       return (None, None)
+
+    if p1 == p2:
+        temp = np.mod(2 * y1, n)
+        if temp == 0:
+            return (inf, inf)
+        den = invmodn(2 * y1, n)
+        num = np.mod(x1 * x1, n)
+        num = np.mod(np.mod(3 * num, n) + a, n)
+    else:   # case p1 ~= p2
+        if np.gcd(x2 - x1, n) != 1:
+            print('Elliptic Curve addition produced a factor of n, factor = ', z1)
+            return (None, None)
+        temp = np.mod(x2 - x1, n)
+        if np.mod(n, temp) == 0:   # Infinity case
+            return (inf, inf)
+        den = invmodn(temp, n)
+        num = np.mod(y2 - y1, n)
+        
+    m = np.mod(num * den, n)
+    temp = np.mod(m * m, n)
+    x3 = np.mod(temp - x1 - x2, n)
+    temp = x1 - x3
+    y3 = np.mod(m * temp, n)
+    y3 = np.mod(y3 - y1, n)
+    return (x3, y3)
+
+
 def circmat(v, m):
     '''This function produces a circulant matrix of the type
     that is used in the function lfsrlength'''
@@ -168,6 +254,7 @@ def lfsr(c, k, n):
     The initial values of the bits are given by the vector k"""
 
     y = [0 for _ in range(n)]
+    c = np.array([c])
 
     kln = len(k)
     for j in range(n):
@@ -175,23 +262,20 @@ def lfsr(c, k, n):
             y[j] = k[j]
         else:
             reg = y[j-kln:j]
-            y[j] = np.mod(np.dot(reg, c), 2)
+            y[j] = np.mod(np.matmul(reg, c.T), 2)[0]
     return y
 
-def lfsrlength(v,n):
+def lfsrlength(v, n):
     """This function tests the vector v of bits to see if it is generated
     by a linear feedback recurrence of length at most n"""
 
-    res = dict()
+    print('Order\tDeterminant')
     for j in range(1, n+1):
-       M = circmat(v,j)
-       Mdet = int(np.round(np.linalg.det(np.array(M)))) % 2
-       res[j] = Mdet
-       if j == 38:
-           det = np.linalg.det(np.array(M))
-    return res
+       M = circmat(v, j)
+       Mdet = int(np.mod(np.linalg.det(np.array(M)), 2))
+       print(j, Mdet, sep='\t')
 
-def lfsrsolve(v,n):
+def lfsrsolve(v, n):
     """Given a guess n for the length of the recurrence that generates
     the binary vector v, this function returns the coefficients of the
     recurrence."""
@@ -202,7 +286,7 @@ def lfsrsolve(v,n):
     if (vln < 2*n):
        raise ValueError('The vector v needs to be atleast length 2n')
 
-    M = np.array(circmat(v,n))
+    M = np.array(circmat(v, n))
     Mdet = np.linalg.det(M)
 
     x = np.array(v[n:2*n]).reshape(-1, 1)
@@ -215,27 +299,40 @@ def lfsrsolve(v,n):
     # be ok
 
     y = np.mod(np.matmul(Minv, x), 2)
-    return list(y[:,0])
+    y = y[:].T# Convert the output to a row vector
+    print(M, Minv, x, sep='\n')
+    return y
 
-##def multell(p,M,a,b,n):
-##% This function prints the Mth multiple of p on the elliptic
-##%  curve with coefficients a and b mod n.
-##
-##z1=M;
-##y = [inf inf];
-##while z1 != 0:
-##    while (np.mod(z1,2) == 0):
-##        z1 = (z1/2)
-##        p = addell(p, p, a, b, n)
-##        if (length(p)==0):
-##           y=[];
-##           disp('Multell found a factor of n and exited');
-##           z1
-##           return y
-##    z1 = z1 - 1
-##    y=addell(y, p, a, b, n)
-##    if (length(y)==0)
-##       return y
+def multsell(p,M,a,b,n):
+    '''This function prints the first M multiples of p'''
+    y = [p]
+    q = p;
+    for k in range(2, M + 1):
+       z = addell(p, q, a, b, n)
+       q = z;
+       if (len(z)==0):   # must have returned a factor!
+          disp('Multsell ended early since it found a factor');
+          return y
+       y.append(z)
+    return y
+
+def multell(p, M, a, b, n):
+    '''This function prints the Mth multiple of p on the elliptic
+    curve with coefficients a and b mod n.'''
+    z1 = M
+    y = [inf, inf]
+    while z1 != 0:
+        while np.mod(z1, 2) == 0:
+            z1 = (z1/2)
+            p = addell(p, p, a, b, n)
+            if p == (None, None):
+               y = []
+               print('Multell found a factor of n and exited', z1)
+               return y
+        z1 = z1 - 1
+        y = addell(y, p, a, b, n)
+        if len(y) == 0:
+           return y
 
 # https://gist.github.com/Ayrx/5884790
 def primetest(n, k=30):
@@ -273,11 +370,11 @@ def primetest(n, k=30):
             return False
     return True
 
-def _powermod_single(a,z,n):
+def _powermod_single(a, z, n):
 
     #take care of negative exponent
     if (z<0):
-        z *= -z
+        z *= -1
         a = invmodn(a, n)
 
     return pow(a, z, n)
@@ -292,7 +389,3 @@ If a is a matrix, it calculates a(j,k)^z mod for every element in a"""
     for x in a:
         ret.append(_powermod_single(x, z, n))
     return(ret)
-
-
-if __name__ == "__main__":
-    pass
