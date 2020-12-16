@@ -58,8 +58,8 @@ def addell(p1, p2, a, b, n):
 
     if p1 == p2 and np.gcd(y1, n) != 1 and np.gcd(y1, n) != n:
        z1 = np.gcd(y1, n)
-       print('Elliptic Curve addition produced a factor of n, factor = ', z1)
-       return (None, None)
+       #print('Elliptic Curve addition produced a factor of n, factor = ', z1)
+       return (z1,)
 
     if p1 == p2:
         temp = np.mod(2 * y1, n)
@@ -70,8 +70,8 @@ def addell(p1, p2, a, b, n):
         num = np.mod(np.mod(3 * num, n) + a, n)
     else:   # case p1 ~= p2
         if np.gcd(x2 - x1, n) != 1:
-            print('Elliptic Curve addition produced a factor of n, factor = ', z1)
-            return (None, None)
+            #print('Elliptic Curve addition produced a factor of n, factor = ', np.gcd(x2 - x1, n))
+            return (np.gcd(x2 - x1, n),)
         temp = np.mod(x2 - x1, n)
         if np.mod(n, temp) == 0:   # Infinity case
             return (inf, inf)
@@ -310,9 +310,9 @@ def multsell(p,M,a,b,n):
     for k in range(2, M + 1):
        z = addell(p, q, a, b, n)
        q = z;
-       if (len(z)==0):   # must have returned a factor!
-          disp('Multsell ended early since it found a factor');
-          return y
+       if len(z) == 1:   # must have returned a factor!
+          #print('Multsell ended early since it found a factor');
+          return (z,)
        y.append(z)
     return y
 
@@ -325,10 +325,10 @@ def multell(p, M, a, b, n):
         while np.mod(z1, 2) == 0:
             z1 = (z1/2)
             p = addell(p, p, a, b, n)
-            if p == (None, None):
+            if len(p) == 1:
                y = []
-               print('Multell found a factor of n and exited', z1)
-               return y
+               #print('Multell found a factor of n and exited', z1)
+               return ((z1,))
         z1 = z1 - 1
         y = addell(y, p, a, b, n)
         if len(y) == 0:
